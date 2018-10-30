@@ -1,0 +1,16 @@
+version: '3'
+services:
+   postgres:
+           image: mdillon/postgis:10
+      environment:
+         - POSTGRES_DB=inmet
+         - POSTGRES_USER=inmet
+      volumes:
+         - ./pgdata:/var/lib/postgresql/data
+
+   inmet:
+      build: .
+      ports:
+         - 6000:8080
+      depends_on:
+         - postgres
