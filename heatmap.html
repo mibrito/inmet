@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+  }
+
+  .axis text {
+      font-family: sans-serif;
+      font-size: 11px;
+  }
+</style>
+
+<div class="heatmap"></div>
+<!-- <select id="options">
+  <option value="byStartOperationDate">Início das Operações</option>
+  <option value="byNumMensurements">Número de medições</option>
+</select> -->
+
+<script src="d3.v5.min.js"></script>
+
+<script>
+    var itemSize = 10, 
+        cellSize = itemSize - 1, 
+        margin = {top: 40, right: 20, bottom: 20, left: 35};
+          
+    var width = 2700 - margin.right - margin.left,
+        height = 615 - margin.top - margin.bottom;
+
+    Promise.resolve(d3.json("http://localhost:5000/mensuration/getFrequencyPerMonth")).then((response) => {
+        var data = response;
+        console.log(data);
+
+        var x_elements = d3.set(data.map(( item ) => item.station)).values();
+        var y_elements = d3.set(data.map(( item ) => item.year )).values();
+
+        var xScale = d3.scaleBand()
+            .domain(x_elements)
+            .range([0, x_elements.length * itemSize])
+
+        var xAxis = d3.axisTop(xScale)
+            .tickFormat((d) => d);
+
+        var yScale = d3.scaleBand()
+            .domain(y_elements)
+            .range([0, y_elements.length * itemSize]);
+
+        var yAxis = d3.axisLeft(yScale)
+            .tickFormat((d) => d);
+
+        var colorScale = d3.scaleThreshold()
+            .domain([30, 120, 300, 364])
+            .range(["#ebedf0", "#c6e48b", "#7bc96f", "#239a3b", "#1d722e"]);
+
+        var svg = d3.select('.heatmap')
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        var cells = svg.selectAll('rect')
+            .data(data)
+            .enter().append('g').append('rect')
+            .attr('class', 'cell')
+            .attr('width', cellSize)
+            .attr('height', cellSize)
+            .attr('y', (d) => yScale(d.year))
+            .attr("ry", 2)
+            .attr('x', (d) => xScale(d.station))
+            .attr("rx", 2)
+            .attr('fill', (d) => colorScale(d.frequency));
+
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(yAxis)
+            .selectAll('text')
+            .attr('font-weight', 'normal');
+
+        svg.append("g")
+            .attr("class", "x axis")
+            .call(xAxis)
+            .selectAll('text')
+            .attr('font-weight', 'normal')
+            .style("text-anchor", "start")
+            .attr("dx", ".8em")
+            .attr("dy", ".5em")
+            .attr("transform", (d) => "rotate(-65)");
+
+        var select = d3.select('body')
+            .append('select')
+            .attr('class','select')
+            .on('change',onchange)
+
+        select.append('option')
+              .attr('value','byStations')
+              .text('Estações')
+
+        select.append('option')
+              .attr('value','byNumMensurements')
+              .text('Ordenar por número de registros')
+
+        function onchange() {
+          if(this.value == 'byNumMensurements'){
+            byNumMensurementsFunc();
+          } else if (this.value == 'byStations'){
+            xScale.domain(x_elements);
+
+          var t = svg.transition().duration(1000);
+          render(t);
+          }
+        }
+
+        var byNumMensurementsFunc = () => {
+          var sorted = data.sort((a, b) => d3.descending(a.total, b.total) || d3.ascending(a.year, b.year) || d3.ascending(a.station, b.station));
+          var x_elements_sorted = d3.set(sorted.map(( item ) => item.station)).values();
+
+          xScale.domain(x_elements_sorted);
+
+          var t = svg.transition().duration(1000);
+          render(t);
+        }
+
+        var render = (t) => {
+          t.select(".x.axis")
+            .call(xAxis)
+            .selectAll('text')
+            .attr('font-weight', 'normal')
+            .style("text-anchor", "start")
+            .attr("dx", ".8em")
+            .attr("dy", ".5em")
+            .attr("transform", (d) => "rotate(-65)")
+
+            t.selectAll(".cell")
+            .attr('width', cellSize)
+            .attr('height', cellSize)
+            .attr('y', (d) => yScale(d.year))
+            .attr("ry", 2)
+            .attr('x', (d) => xScale(d.station))
+            .attr("rx", 2)
+            .attr('fill', (d) => colorScale(d.frequency));
+        }
+    });
+</script>
